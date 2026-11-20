@@ -1,0 +1,54 @@
+{
+  "name": "jarvis-agent",
+  "productName": "Vision",
+  "version": "1.9.3",
+  "description": "Voice-controlled Gemini agent that sees and operates your Windows PC",
+  "main": "src/main/main.js",
+  "author": "Mostafa Mamdouh",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "local.jarvis.agent",
+    "productName": "Vision",
+    "copyright": "Mostafa Mamdouh",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "src/main/helper.ps1",
+      "src/main/wake-local.ps1"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Vision-Setup.exe",
+      "license": "DISCLAIMER.txt"
+    }
+  }
+}

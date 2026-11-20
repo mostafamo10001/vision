@@ -1,0 +1,26 @@
+VISION - DISCLAIMER AND TERMS OF USE
+
+Please read this before installing or using Vision.
+
+1. WHAT VISION IS
+Vision is an AI assistant that can control your Windows PC. At your request it can open and close programs, move, copy and delete files, type and click for you, change system settings, and run PowerShell commands. Its decisions are made by an AI model (Google Gemini), which can misunderstand you, mishear you, or make mistakes.
+
+2. YOU ARE RESPONSIBLE
+You use Vision at your own risk and are responsible for the requests you give it and the actions you approve. Vision is provided "as is", without warranty of any kind, express or implied. To the fullest extent permitted by law, the author is not liable for any loss or damage, including lost or damaged files, data, settings or accounts, or any other harm, arising from the use of Vision.
+
+3. SAFETY SETTINGS
+Vision asks for your approval before risky actions. In "autopilot" mode, or if you turn off the PowerShell approval prompt, it acts without asking. Choosing those options is your decision and your responsibility. Keep important data backed up.
+
+4. YOUR DATA AND GOOGLE GEMINI
+Vision needs your own Gemini API key. While a voice session is active, your microphone audio is sent to Google's Gemini API. When Vision looks at your screen or reads a file you point it at, that content is sent to Gemini as well. Wake-word detection happens on your PC and sends nothing. Google's terms and privacy policy apply to data sent to Google, and API usage may be billed to your key. Do not use Vision on screens or files containing information you are not allowed to share.
+
+5. NOT FOR CRITICAL USE
+Do not rely on Vision for anything where a mistake could cause harm, injury, or serious loss. Do not use it to break the law or to violate other people's rights or the terms of other services.
+
+6. EXTERNAL SOFTWARE
+Vision does not install software on its own initiative, but it can launch programs and run commands that you ask for or approve. Some antivirus programs may warn about software that types, clicks and runs PowerShell; this is expected for this kind of tool.
+
+7. CHANGES
+This software may change or stop working at any time, including because the services it depends on change.
+
+By installing or using Vision you confirm that you have read and accepted this disclaimer.

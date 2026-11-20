@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src wss://generativelanguage.googleapis.com https://generativelanguage.googleapis.com; media-src 'self' blob:; img-src 'self' data:">
+<title>Vision</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="titlebar">
+    <div class="brand" title="Made by Mostafa Mamdouh"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.6" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M7.1 7.6h3.2L12 12.2l1.7-4.6h3.2L12 16.8z" fill="#fff"/></svg>VISION<span class="dot" id="dot"></span></div>
+    <div class="status" id="status">Standing by</div>
+    <div class="winbtns">
+      <button id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+      <button id="btn-min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button id="btn-hide" title="Hide to tray" aria-label="Hide"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </header>
+
+  <section class="stage"><canvas id="orb"></canvas><div class="hint" id="hint">Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> or tap the mic</div></section>
+
+  <section class="log" id="log" aria-live="polite"></section>
+
+  <form class="composer" id="composer" autocomplete="off">
+    <input id="text" type="text" placeholder="Type or just speak…" aria-label="Message">
+    <button type="button" id="btn-mic" class="round" title="Start / stop listening" aria-label="Microphone"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0M12 16v4M9 20h6"/></svg></button>
+    <button type="button" id="btn-stop" class="round danger" title="Stop everything (Ctrl+Alt+Esc)" aria-label="Stop"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg></button>
+  </form>
+
+  <div class="modal" id="approval" hidden>
+    <div class="card">
+      <div class="eyebrow">Approval needed</div>
+      <p id="approval-desc"></p>
+      <div class="row">
+        <button id="ap-yes" class="primary">Approve <small>Ctrl+Alt+Y</small></button>
+        <button id="ap-no">Deny <small>Ctrl+Alt+N</small></button>
+      </div>
+      <button id="ap-task" class="link">Approve this and similar actions for this task</button>
+      <button id="ap-trust" class="link" hidden>Approve, and don't ask for PowerShell for 30 minutes</button>
+    </div>
+  </div>
+
+  <div class="panel" id="settings" hidden>
+    <div class="panel-head"><h2>Settings</h2><button id="settings-close" class="link">Done</button></div>
+    <div class="panel-body">
+      <div class="notice" id="setup-note" hidden>Welcome. Paste your Gemini API key to wake Vision up. Get one free at <b>aistudio.google.com/apikey</b>.</div>
+
+      <label class="field"><span>Gemini API key</span>
+        <div class="row"><input id="s-key" type="password" placeholder="AIza…" spellcheck="false"><button id="s-key-save" class="primary">Save</button></div>
+        <small id="s-key-msg"></small></label>
+
+      <label class="field"><span>Never use these Gemini models (comma-separated)</span><input id="s-excludeModels" type="text" placeholder="gemini-3.8-flash"></label>
+      <label class="field"><span>Your name (optional)</span><input id="s-userName" type="text" placeholder="What should Vision call you?"></label>
+
+      <h3>Behaviour</h3>
+      <label class="field"><span>Autonomy</span>
+        <select id="s-autonomy">
+          <option value="cautious">Cautious — ask before any action that changes something</option>
+          <option value="balanced">Balanced — ask only for risky actions (send, delete, overwrite)</option>
+          <option value="autopilot">Autopilot — only ask for deletes and shell commands</option>
+        </select></label>
+      <label class="check"><input type="checkbox" id="s-wakeWord"><span>Wake word: say a phrase below to start talking <small>(not used while hands-free is on)</small></span></label>
+      <label class="field"><span>Wake word engine</span><select id="s-wakeEngine"><option value="local">Local: Windows speech recognition (offline, uses no quota)</option><option value="cloud">Cloud: Gemini (uses quota)</option></select></label>
+      <label class="field"><span>Wake phrases (separate with commas)</span><input id="s-wakePhrases" type="text" placeholder="hey vision, okay vision, hey jarvis"></label>
+      <label class="field"><span>Wake word sensitivity</span><select id="s-wakeSensitivity"><option value="strict">Strict: fewer false triggers</option><option value="normal">Balanced</option><option value="sensitive">Sensitive: hears you more easily</option></select></label>
+      <div class="row"><button id="w-test">Test wake word</button></div>
+      <div class="facts" id="w-status">Press Test, then say your wake phrase.</div>
+      <label class="check"><input type="checkbox" id="s-handsFree"><span>Hands-free: keep listening and answer only when addressed <small>(uses more of your quota; headphones recommended)</small></span></label>
+      <label class="check"><input type="checkbox" id="s-halfDuplex"><span>Mute mic while Vision speaks <small>(stops it hearing itself on speakers, disables interrupting)</small></span></label>
+      <label class="check"><input type="checkbox" id="s-allowShell"><span>Allow PowerShell commands</span></label>
+      <label class="check"><input type="checkbox" id="s-shellNoAsk"><span>Don't ask before PowerShell commands <small>(dangerous ones, like formatting a drive, stay blocked)</small></span></label>
+      <label class="field"><span>Most PowerShell commands per request</span><input id="s-shellMaxCommands" type="number" min="1" max="50" step="1"><small>Raise it for bigger jobs. Applies to the next voice session.</small></label>
+      <label class="check"><input type="checkbox" id="s-holdOpen"><span>Keep listening until I press the mic again <small>(no auto-sleep; uses more Gemini quota while the mic is on)</small></span></label>
+      <label class="field"><span>Wait for silence before replying (seconds)</span><input id="s-silenceWaitSec" type="number" min="0.3" max="6" step="0.1"><small>Vision waits this long after you stop talking before it answers, so pauses mid-sentence don't cut you off. Applies the next time the voice session starts. Lower = snappier, higher = more patient.</small></label>
+      <label class="field"><span>Max steps per computer task</span><input id="s-maxSteps" type="number" min="3" max="60"></label>
+      <label class="field"><span>Go to sleep after silence (seconds, when not hands-free)</span><input id="s-idleDisconnectSec" type="number" min="20" max="3600"></label>
+
+      <h3>Voice &amp; models</h3>
+      <label class="field"><span>Voice</span><select id="s-voice"></select></label>
+      <label class="field"><span>Live voice model</span><select id="s-liveModel"></select></label>
+      <label class="field"><span>Computer-task model (the "brain")</span><select id="s-workerModel"></select></label>
+      <label class="field"><span>Fast vision / lookup model</span><select id="s-fastModel"></select></label>
+      <div class="row"><button id="s-refresh">Refresh model list</button><small id="s-refresh-msg"></small></div>
+
+      <h3>Appearance</h3>
+      <label class="field"><span>Colour theme</span>
+        <select id="s-themePreset"><option value="vision">Vision (indigo and gold)</option><option value="ocean">Ocean (blue and amber)</option><option value="emerald">Emerald (green and yellow)</option><option value="crimson">Crimson (red and amber)</option><option value="mono">Mono (silver and white)</option><option value="custom">Custom</option></select></label>
+      <div class="row colors"><label>Main<input type="color" id="s-themeAccent"></label><label>Highlight<input type="color" id="s-themeGold"></label><label>Listening<input type="color" id="s-themeListen"></label></div>
+
+      <h3>Window</h3>
+      <label class="check"><input type="checkbox" id="s-alwaysOnTop"><span>Keep Vision on top</span></label>
+      <label class="check"><input type="checkbox" id="s-hideFromCapture"><span>Hide Vision from screenshots it takes</span></label>
+      <label class="check"><input type="checkbox" id="s-startWithWindows"><span>Start with Windows</span></label>
+
+      <h3>Memory</h3>
+      <div id="facts" class="facts"></div>
+      <button id="s-clear-mem">Forget everything</button>
+      <div class="row spread"><button id="s-diag">Run diagnostics &amp; copy report</button></div>
+      <div class="row spread"><button id="s-quit" class="danger-text">Quit Vision</button></div>
+      <div class="credit">Vision &middot; Made by Mostafa Mamdouh</div>
+    </div>
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
