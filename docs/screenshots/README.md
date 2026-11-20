@@ -1,2 +1,5 @@
-Put your screenshots here, for example `main-window.png`, `settings.png`, `orb.png`.
-Then uncomment the image line near the top of the main README.md. Check each image first for API keys, names, file paths or private content.
+Screenshots used by the main README.md.
+
+- `main-window.png`: the main window (orb, status line, chat, message box).
+
+Add more here (for example Settings) and reference them from the README. Check each image for API keys, names, file paths or private content first.

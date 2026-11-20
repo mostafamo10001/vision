@@ -10,9 +10,11 @@ Built on the Google Gemini Live API · Windows 10 / 11 · Made by Mostafa Mamdou
 
 </div>
 
-<!-- Add a screenshot or short GIF here once you have one:
-![Vision](docs/screenshots/main-window.png)
--->
+<div align="center">
+
+<img src="docs/screenshots/main-window.png" alt="Vision main window: animated orb, status line, chat and a message box" width="360">
+
+</div>
 
 > **Please read the [disclaimer](DISCLAIMER.txt) before you use Vision.** It can control your computer. You are responsible for what you ask it to do.
 
@@ -65,7 +67,7 @@ None of this makes it risk-free. See the disclaimer.
 
 **Requirements:** Windows 10 or 11 (x64), a microphone, a Gemini API key, and the *English (United States)* Windows speech pack for the offline wake word (Settings → Time & language → Speech).
 
-1. Download `Vision-Setup.exe` from the [Releases](../../releases) page.
+1. Download `Vision-Setup.exe` from the [Releases](../../releases/latest) page.
 2. Run it. Windows SmartScreen may say "unknown publisher" because the installer is not code-signed: choose **More info → Run anyway**.
 3. Paste your Gemini API key when Vision asks.
 4. Say "Hey Vision", or press `Ctrl+Alt+Space`.
