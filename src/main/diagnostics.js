@@ -90,7 +90,7 @@ async function run() {
     '', ...lines, '', 'Recent errors from the log:', logger.tail(25)
   ].join('\n');
   try { fs.writeFileSync(path.join(logger.dir(), 'diagnostics.txt'), report); } catch {}
-  try { clipboard.writeText(report); } catch {}
+  try { Promise.resolve(clipboard.writeText(report)).catch(() => {}); } catch {} // async since Electron 44, sync before
   logger.log('diagnostics', `${failed} failure(s)`);
   runtime.emit('step', { kind: failed ? 'err' : 'sys', text: failed ? `${failed} check(s) failed. The full report is copied to your clipboard: paste it into the chat.` : 'Everything passed. The report is copied to your clipboard.' });
 

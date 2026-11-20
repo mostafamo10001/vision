@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.4
+**Security / platform update**
+- Electron 33 (unsupported since April 2025) -> **Electron 45**, the current supported release, with the latest Chromium and Node.js security fixes. Build tooling updated to electron-builder 26; the CI build uses the current Node.js LTS.
+- Clipboard: Electron 44 made the main-process clipboard asynchronous. Paste-typing, the clipboard tool, "read selection", the diagnostics report and transcript copy now handle that (and still work on older Electron).
+- System-audio transcription: Electron 45 reports screen/audio capture as `display-capture`; Vision now allows it (and `media`) so recording the PC's audio keeps working.
+
 ## 1.9.3
 **Wake word**
 - The wake listener no longer gives up after one startup error. Right after login the microphone or audio service is often not ready; it now retries with increasing delays (2 s up to 30 s) and never stops trying. Only "no English speech recognizer installed" is treated as permanent.

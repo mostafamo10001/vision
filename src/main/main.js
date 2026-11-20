@@ -157,8 +157,8 @@ app.whenReady().then(() => {
     require('electron').desktopCapturer.getSources({ types: ['screen'] }).then(src => cb({ video: src[0], audio: 'loopback' })).catch(() => cb({}));
   }, { useSystemPicker: false });
   transcribe.onState(on => { if (tray) tray.setToolTip(on ? 'Vision · recording…' : 'Vision · made by Mostafa Mamdouh'); });
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === 'media'));
-  session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media');
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === 'media' || permission === 'display-capture')); // Electron 45 reports screen/system-audio capture as 'display-capture'
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media' || permission === 'display-capture');
   // First launch of the installed app: turn on "Start with Windows" once (can be switched off in Settings).
   if (!cfg.get().shellDefaultApplied) cfg.set({ allowShell: true, shellDefaultApplied: true });
   if (app.isPackaged && !cfg.get().startupInitialised) cfg.set({ startWithWindows: true, startupInitialised: true });

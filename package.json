@@ -1,7 +1,7 @@
 {
   "name": "jarvis-agent",
   "productName": "Vision",
-  "version": "1.9.3",
+  "version": "1.9.4",
   "description": "Voice-controlled Gemini agent that sees and operates your Windows PC",
   "main": "src/main/main.js",
   "author": "Mostafa Mamdouh",
@@ -10,8 +10,8 @@
     "dist": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "electron": "^45.4.1",
+    "electron-builder": "^26.0.0"
   },
   "build": {
     "appId": "local.jarvis.agent",

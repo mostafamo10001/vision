@@ -145,10 +145,10 @@ async function yieldFocus() {
 async function typeText(text) {
   await yieldFocus();
   try { await bridge.call('type', { text }, 60000); return 'Typed.'; } catch (e1) { /* fall through */ }
-  const prev = clipboard.readText();
+  const prev = await clipboard.readText(); // Electron 44+ made the clipboard async (older versions are sync): await works for both
   try { // fallback 1: paste through the clipboard
-    clipboard.writeText(text); await bridge.call('keys', { combo: 'ctrl+v' }); await sleep(300); return 'Typed (pasted).';
-  } catch (e2) { /* fall through */ } finally { setTimeout(() => { try { clipboard.writeText(prev); } catch {} }, 700); }
+    await clipboard.writeText(text); await bridge.call('keys', { combo: 'ctrl+v' }); await sleep(300); return 'Typed (pasted).';
+  } catch (e2) { /* fall through */ } finally { setTimeout(() => { try { Promise.resolve(clipboard.writeText(prev)).catch(() => {}); } catch {} }, 700); }
   // fallback 2: a fresh PowerShell with SendKeys
   const esc = text.replace(/[+^%~(){}\[\]]/g, m => '{' + m + '}').replace(/\r?\n/g, '{ENTER}').replace(/'/g, "''");
   await runPowerShell(`Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${esc}')`);
@@ -370,7 +370,7 @@ def({
   name: 'clipboard', description: 'Read or write the clipboard text.',
   parameters: obj({ action: oneOf('get or set', ['get', 'set']), text: str('Text to put on the clipboard (set only).') }, ['action']),
   level: a => (a.action === 'set' ? 1 : 0), describe: a => `Clipboard ${a.action}`,
-  run: async a => { if (a.action === 'set') { clipboard.writeText(String(a.text ?? '')); return 'Copied to clipboard.'; } const t = clipboard.readText(); return t ? clip(t, 4000) : '(clipboard is empty or not text)'; }
+  run: async a => { if (a.action === 'set') { await clipboard.writeText(String(a.text ?? '')); return 'Copied to clipboard.'; } const t = await clipboard.readText(); return t ? clip(t, 4000) : '(clipboard is empty or not text)'; }
 });
 def({
   name: 'system_status', description: 'Battery, CPU load, memory, free disk space, uptime and the current time.',
@@ -605,9 +605,9 @@ def({
   describe: () => 'Read selected text',
   run: async () => {
     await yieldFocus();
-    const prev = clipboard.readText(); clipboard.writeText('');
-    try { await bridge.call('keys', { combo: 'ctrl+c' }); await sleep(300); const t = clipboard.readText(); return t ? clip(t, 8000) : '(nothing is selected)'; }
-    finally { try { clipboard.writeText(prev); } catch {} }
+    const prev = await clipboard.readText(); await clipboard.writeText('');
+    try { await bridge.call('keys', { combo: 'ctrl+c' }); await sleep(300); const t = await clipboard.readText(); return t ? clip(t, 8000) : '(nothing is selected)'; }
+    finally { try { await clipboard.writeText(prev); } catch {} }
   }
 });
 // ----- transcription: speech or audio -> a text file -----

@@ -198,7 +198,7 @@ async function saveTranscript(text, label, audioKept, quiet) {
   await fsp.mkdir(outDir(), { recursive: true });
   const file = path.join(outDir(), `${label} - transcript ${stamp()}.txt`);
   await fsp.writeFile(file, '\ufeff' + text + '\n', 'utf8'); // BOM so Notepad shows Arabic and other scripts correctly
-  try { clipboard.writeText(text); } catch {}
+  try { await clipboard.writeText(text); } catch {} // async since Electron 44, sync before
   shell.openPath(file).catch(() => {});
   const words = text ? text.split(/\s+/).length : 0;
   if (!quiet) { notify('Transcript ready', `${words} words. Saved and copied to the clipboard.`); say('sys', `Transcript saved: ${file} (${words} words, also copied to the clipboard).`); }
