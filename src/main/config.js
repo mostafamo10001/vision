@@ -19,6 +19,7 @@ const DEFAULTS = {
   idleDisconnectSec: 120,     // close the voice session after this much silence (when not hands-free)
   halfDuplex: false,          // mute mic while Vision speaks (use with laptop speakers if it hears itself)
   alwaysOnTop: true,
+  accurateCaptions: true,     // after each turn, re-transcribe your speech with a dedicated model for correct on-screen text
   hideFromCapture: false,     // when on, Windows blanks the window in every capture (Win+Shift+S, screen sharing, Vision's own screenshots)
   startWithWindows: false,   // the installed .exe switches this on at first launch
   startupInitialised: false, // internal: first-run flag

@@ -64,7 +64,7 @@ export class LiveClient {
     this.o = opts; this.cb = cb || {};
     this.ws = null; this.handle = null; this.closing = false; this.reconnecting = false;
     this.model = null; this.variant = null; this.lean = false;
-    this.player = null; this.mic = null; this.micLevel = 0; this.lastVoiceAt = 0; this.pendingTools = 0; this.cancelers = new Set(); this.stoppedAt = 0;
+    this.player = null; this.mic = null; this.micLevel = 0; this.turnPcm = []; this.lastVoiceAt = 0; this.pendingTools = 0; this.cancelers = new Set(); this.stoppedAt = 0;
   }
   get connected() { return !!this.ws && this.ws.readyState === WebSocket.OPEN; }
   get speaking() { return !!this.player?.playing; }
@@ -138,7 +138,10 @@ export class LiveClient {
   async _startAudio() {
     this.player?.close(); this.player = new Player();
     let ready = !this.o.getPreroll;
-    const sendPcm = pcm => this._send({ realtimeInput: { audio: { data: b64(pcm), mimeType: 'audio/pcm;rate=16000' } } });
+    const sendPcm = (pcm, keepAlive) => {
+      this._send({ realtimeInput: { audio: { data: b64(pcm), mimeType: 'audio/pcm;rate=16000' } } });
+      if (!keepAlive) { this.turnPcm.push(pcm); if (this.turnPcm.length > 750) this.turnPcm.shift(); } // keep this turn's audio (at most 30 s) for the accurate transcript
+    };
     // Silence gate: only upload audio while someone is talking (plus a short lead-in, and a tail as long as the silence-wait
     // setting so Gemini can still tell that the turn is over). Quiet rooms upload almost nothing; a noisy room just keeps the gate open.
     const hang = Math.ceil(((this.o.silenceMs || 2500) + 800) / 40), PRE = 15; // 40 ms chunks
@@ -152,7 +155,7 @@ export class LiveClient {
         ring.push(pcm); if (ring.length > PRE) ring.shift();
         run = voiced ? run + 1 : 0;
         if (run >= 2) { open = true; quiet = 0; run = 0; for (const c of ring) sendPcm(c); ring.length = 0; lastSent = Date.now(); }
-        else if (Date.now() - lastSent > 10000) { sendPcm(pcm); lastSent = Date.now(); } // tiny keep-alive so the connection never looks dead
+        else if (Date.now() - lastSent > 10000) { sendPcm(pcm, true); lastSent = Date.now(); } // tiny keep-alive so the connection never looks dead
       } else {
         sendPcm(pcm); lastSent = Date.now();
         if (voiced) quiet = 0; else if (++quiet >= hang) { open = false; ring.length = 0; }
@@ -173,6 +176,8 @@ export class LiveClient {
   }
 
   // The network came back: a socket that died silently (Wi-Fi switch, sleep, VPN) can still look open. Closing it makes the normal reconnect run.
+  takeTurnAudio() { const a = this.turnPcm; this.turnPcm = []; return a; } // everything sent since the last call = what you just said
+
   nudge() { if (this.connected && !this.reconnecting && !this.closing) { try { this.ws.close(); } catch {} } }
 
   _send(obj) { if (this.connected) this.ws.send(JSON.stringify(obj)); }

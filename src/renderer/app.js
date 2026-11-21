@@ -1,5 +1,5 @@
 import { LiveClient } from './live.js';
-import { WakeListener } from './wake.js';
+import { WakeListener, wavBase64 } from './wake.js';
 import { Recorder } from './recorder.js';
 import { isMultiStepCall, shouldContinue, continueText } from './steps.js';
 import { drawOrb } from './orbdraw.js';
@@ -199,9 +199,9 @@ async function startListening(pendingText, opts = {}) {
       silenceMs: Math.round(Math.min(6, Math.max(0.3, Number(s.settings.silenceWaitSec) || 2.5)) * 1000),
       getPreroll: (opts.fromWake && !opts.local) ? () => { const b = wake.takeBacklog(); wake.stop(); return b; } : null }, {
       onUser: t => { if (Date.now() - lastUserTextAt > 4000) { reqBuf = ''; turnToolCount = 0; usedMulti = false; continued = false; } reqBuf = (reqBuf + t).slice(-600); voiceStopCheck(t); voiceApprovalCheck(t); lastActivity = Date.now(); lastUserTextAt = Date.now(); if (!live?.speaking && Date.now() - turnDoneAt > 1500) awaiting = Date.now(); /* late transcripts must not restart thinking */ if (!curUser) { curUser = addMsg('user', ''); curAsst = null; } curUser.textContent += t; scroll(); },
-      onAssistant: t => { lastActivity = Date.now(); awaiting = 0; if (!curAsst) { curAsst = addMsg('assistant', ''); curUser = null; } curAsst.textContent += t; scroll(); },
+      onAssistant: t => { lastActivity = Date.now(); awaiting = 0; if (!curAsst) { curAsst = addMsg('assistant', ''); refineUser(curUser); curUser = null; } curAsst.textContent += t; scroll(); },
       onTurnComplete: () => {
-        curUser = null; curAsst = null; awaiting = 0; turnDoneAt = Date.now();
+        refineUser(curUser); curUser = null; curAsst = null; awaiting = 0; turnDoneAt = Date.now();
         // safety net: it finished its turn after part one of a multi-part request, so tell it once to carry on
         if (live && shouldContinue({ toolCount: turnToolCount, usedMulti, continued, request: reqBuf, sinceToolMs: Date.now() - lastToolAt })) {
           continued = true; addStep('sys', 'Continuing with the rest of your request…'); live.sendText(continueText(reqBuf));
@@ -209,7 +209,7 @@ async function startListening(pendingText, opts = {}) {
       },
       onInterrupted: () => { curAsst = null; awaiting = 0; },
       onAudio: () => { lastActivity = Date.now(); awaiting = 0; lastAudioAt = Date.now(); try { J.orb('speaking', live ? live.outLevel() : 0); orbWasOn = true; } catch {} /* the orb appears with the first sound, not on the next poll */ },
-      onTool: calls => { lastActivity = Date.now(); curUser = null; awaiting = Date.now(); turnToolCount += (calls || []).length; if ((calls || []).some(isMultiStepCall)) usedMulti = true; lastToolAt = Date.now(); },
+      onTool: calls => { lastActivity = Date.now(); refineUser(curUser); curUser = null; awaiting = Date.now(); turnToolCount += (calls || []).length; if ((calls || []).some(isMultiStepCall)) usedMulti = true; lastToolAt = Date.now(); },
       lastRequest: () => reqBuf,
       // start_transcription only runs if the user's own words contain "transcribe" / "start transcribing" (the spoken text can arrive a moment after the tool call, so wait briefly)
       allowTool: async name => { if (name !== 'start_transcription') return true; for (let i = 0; i < 6; i++) { if (transcribeCommand(reqBuf)) return true; await new Promise(r => setTimeout(r, 300)); } return false; },
@@ -369,7 +369,7 @@ function fillSettings() {
   for (const k of ['wakeEngine', 'wakePhrases', 'wakeSensitivity']) $('s-' + k).value = s[k] || '';
   $('s-shellMaxCommands').value = s.shellMaxCommands ?? 10;
   $('s-themePreset').value = s.themePreset || 'vision'; ['themeAccent', 'themeGold', 'themeListen', 'themeBg'].forEach((k, i) => { $('s-' + k).value = themeColors(s)[i]; });
-  for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows', 'orbWhileTalking']) $('s-' + k).checked = !!s[k];
+  for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows', 'orbWhileTalking', 'accurateCaptions']) $('s-' + k).checked = !!s[k];
   $('s-silenceWaitSec').value = s.silenceWaitSec; $('s-maxSteps').value = s.maxSteps; $('s-idleDisconnectSec').value = s.idleDisconnectSec;
   const v = $('s-voice'); v.innerHTML = ''; VOICES.forEach(n => { const o = document.createElement('option'); o.value = o.textContent = n; v.appendChild(o); }); v.value = VOICES.includes(s.voice) ? s.voice : VOICES[0];
   fillSelect($('s-liveModel'), s.liveModel, m.allLive, `Auto${m.live ? ' (' + m.live + ')' : ''}`);
@@ -391,7 +391,7 @@ function fillSettings() {
 async function patch(p) { cfg = await J.setConfig(p); applyTheme(cfg.settings); syncWake(); }
 const binds = { silenceWaitSec: v => Math.min(6, Math.max(0.3, Number(v) || 2.5)), autonomy: v => v, userName: v => v.trim(), excludeModels: v => v.trim(), wakeEngine: v => v, wakePhrases: v => v.trim(), wakeSensitivity: v => v, maxSteps: Number, shellMaxCommands: v => Math.max(1, Math.min(50, Math.round(Number(v)) || 10)), idleDisconnectSec: Number, voice: v => v, liveModel: v => v, workerModel: v => v, fastModel: v => v };
 for (const [k, fn] of Object.entries(binds)) $('s-' + k).addEventListener('change', e => patch({ [k]: fn(e.target.value) }));
-for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows', 'orbWhileTalking']) $('s-' + k).addEventListener('change', e => patch({ [k]: e.target.checked }));
+for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows', 'orbWhileTalking', 'accurateCaptions']) $('s-' + k).addEventListener('change', e => patch({ [k]: e.target.checked }));
 
 $('s-key-save').onclick = async () => {
   const msg = $('s-key-msg'); msg.textContent = 'Checking…';
@@ -413,6 +413,14 @@ $('s-clear-mem').onclick = async () => { cfg = await J.clearMemory(); fillSettin
   else addMsg('assistant', 'Standing by. Say “Hey Vision”, tap the mic, or press Ctrl+Alt+Space, then just tell me what to do.');
   syncWake();
 })();
+
+// Replace the quick live caption of what you said with an accurate transcript of the recorded audio (falls back silently to the live caption).
+function refineUser(bubble) {
+  const chunks = live ? live.takeTurnAudio() : [];
+  if (!bubble || !chunks.length || !cfg || cfg.settings.accurateCaptions === false) return;
+  if (chunks.length < 8) return; // under ~0.3 s: a blip, not a request
+  J.transcribeTurn(wavBase64(chunks)).then(r => { if (r && r.text && bubble.isConnected) { bubble.textContent = r.text; scroll(); } }).catch(() => {});
+}
 
 // Tell the main process when Vision is speaking or thinking so it can show the on-screen orb while this window is hidden.
 // (setInterval, not requestAnimationFrame: animation frames pause when the window is hidden.)

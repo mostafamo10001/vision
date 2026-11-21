@@ -145,6 +145,7 @@ function wireIpc() {
     const out = await tools.invoke(name, args, { scope: 'live' });
     return typeof out === 'string' ? out : out.text;
   });
+  ipcMain.handle('dictate:turn', async (_e, b64) => { try { return await require('./dictate').transcribe(b64); } catch (e) { return { text: '', error: e.message }; } });
   ipcMain.handle('wake:check', async (_e, b64) => { try { return await wake.check(b64); } catch (e) { return { wake: false, command: '', error: e.message }; } });
   ipcMain.on('approval:answer', (_e, { id, ok, taskWide, trust }) => runtime.answerApproval(id, ok, taskWide, trust));
   ipcMain.on('stop', () => runtime.stopAll());

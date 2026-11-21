@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.8.0]
+
+(Version numbering now follows the app.asar release counter.)
+
+### Added
+- **Accurate text for what you say.** After each thing you say, the recorded audio is sent once to a normal Gemini model that only transcribes, and your message in the chat is replaced with that result. The quick live caption is shown first and stays if the check fails. Turn it off in Settings ("Accurate text for what I say"). Voice handling and commands are unchanged.
+
 ## [1.10.2]
 
 ### Changed

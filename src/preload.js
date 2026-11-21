@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('jarvis', {
   clearMemory: () => ipcRenderer.invoke('memory:clear'),
   forgetItem: (kind, key) => ipcRenderer.invoke('memory:forget', { kind, key }),
   wakeCheck: b64 => ipcRenderer.invoke('wake:check', b64),
+  transcribeTurn: b64 => ipcRenderer.invoke('dictate:turn', b64),
   liveSetup: () => ipcRenderer.invoke('live:setup'),
   invokeTool: (name, args) => ipcRenderer.invoke('tool:invoke', { name, args }),
   answerApproval: (id, ok, taskWide, trust) => ipcRenderer.send('approval:answer', { id, ok, taskWide, trust }),

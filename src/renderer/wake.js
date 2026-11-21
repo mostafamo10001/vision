@@ -12,7 +12,7 @@ function b64(buf) {
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(s);
 }
-function wavBase64(chunks) {
+export function wavBase64(chunks) {
   const total = chunks.reduce((n, c) => n + c.byteLength, 0);
   const out = new Uint8Array(44 + total), v = new DataView(out.buffer);
   const str = (o, t) => { for (let i = 0; i < t.length; i++) out[o + i] = t.charCodeAt(i); };
