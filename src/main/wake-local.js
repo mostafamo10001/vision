@@ -18,7 +18,7 @@ function paramsFrom(settings) {
   return { phrases: phrases.length ? phrases : DEFAULT_PHRASES, threshold: THRESHOLDS[settings.wakeSensitivity] ?? THRESHOLDS.normal };
 }
 
-let proc = null, stopping = false, fatal = false, params = null, handlers = {}, lastWake = 0, failStreak = 0, retryTimer = null;
+let proc = null, stopping = false, fatal = false, params = null, handlers = {}, lastWake = 0, failStreak = 0, retryTimer = null, recFails = 0;
 const running = () => !!proc;
 
 function onLine(line) {
@@ -32,7 +32,7 @@ function onLine(line) {
   else if (kind === 'ERROR') {
     // Only a missing/wrong-language recognizer is permanent. "Could not open the microphone" and other errors are often
     // temporary (the audio service is not ready right after login, a headset is reconnecting), so they must be retried.
-    if (/No Windows speech recognizer|only Windows speech recognizer/i.test(line)) fatal = true;
+    if (/No Windows speech recognizer|only Windows speech recognizer/i.test(line) && ++recFails >= 4) fatal = true; // right after login Windows' speech service can be late, so only give up after several tries
     logger.log('wake-local', line);
     if (fatal || failStreak === 0 || failStreak === 5) handlers.onStatus && handlers.onStatus('Wake word: ' + line.slice(6) + (fatal ? '' : ' (will keep retrying)'));
   }
@@ -58,7 +58,7 @@ function stop() {
   if (p) { if (process.platform === 'win32') execFile('taskkill', ['/PID', String(p.pid), '/T', '/F'], { windowsHide: true }, () => {}); else { try { p.kill(); } catch {} } }
 }
 function start(p, h, { test = false } = {}) {
-  stop(); stopping = false; fatal = false; lastWake = 0; failStreak = 0;
+  stop(); stopping = false; fatal = false; lastWake = 0; failStreak = 0; recFails = 0;
   params = { ...p, test }; handlers = h || {};
   spawnNow();
 }

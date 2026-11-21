@@ -60,6 +60,12 @@ function createWindow() {
   });
   // If the page has not even finished loading after 8 s (slow disk/antivirus right after login or an install), try again.
   setTimeout(() => { if (!win.isDestroyed() && win.webContents.isLoading()) reload('load took too long'); }, 8000);
+  // A window that was created hidden (start with Windows) may never have painted: when it is first shown, make sure it really draws, otherwise reload it.
+  win.on('show', () => {
+    win.webContents.invalidate();
+    win.webContents.executeJavaScript('new Promise(r => { let ok = false; requestAnimationFrame(() => { ok = true; r(true); }); setTimeout(() => r(ok), 1200); })')
+      .then(ok => { if (!ok) reload('window shown but not painting'); }).catch(() => reload('window shown but page not answering'));
+  });
   win.webContents.on('unresponsive', () => reload('page unresponsive'));
   win.webContents.on('did-finish-load', () => logger.log('window', 'page loaded'));
   let shown = false;
