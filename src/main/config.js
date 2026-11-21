@@ -19,7 +19,7 @@ const DEFAULTS = {
   idleDisconnectSec: 120,     // close the voice session after this much silence (when not hands-free)
   halfDuplex: false,          // mute mic while Vision speaks (use with laptop speakers if it hears itself)
   alwaysOnTop: true,
-  hideFromCapture: true,      // keep Vision out of its own screenshots
+  hideFromCapture: false,     // when on, Windows blanks the window in every capture (Win+Shift+S, screen sharing, Vision's own screenshots)
   startWithWindows: false,   // the installed .exe switches this on at first launch
   startupInitialised: false, // internal: first-run flag
   themePreset: 'vision', themeAccent: '#7c8cff', themeGold: '#f6c252', themeListen: '#3de0d0', themeBg: '#06080e',

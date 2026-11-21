@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.2]
+
+### Changed
+- "Hide Vision from screenshots and screen sharing" is now clearly labelled and **off by default**. When on, Windows draws Vision as a black box in every capture (Win+Shift+S, screen sharing, and Vision's own screenshots). Existing installs keep their saved choice; switch it off in Settings → Window.
+
 ## [1.10.1]
 
 ### Fixed
