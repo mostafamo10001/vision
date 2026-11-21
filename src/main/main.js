@@ -49,15 +49,19 @@ function createWindow() {
   // Blank-window guard: if the page fails to load, the renderer dies, or the UI has not drawn itself shortly after loading
   // (seen on the very first start after install), reload it instead of leaving an empty window.
   let reloads = 0;
-  const reload = why => { if (win.isDestroyed() || reloads >= 3) return; reloads++; logger.log('window', `reloading (${why})`); setTimeout(() => { try { win.webContents.reload(); } catch {} }, 500 * reloads); };
+  const reload = why => { if (win.isDestroyed() || reloads >= 4) return; reloads++; logger.log('window', `reloading (${why})`); setTimeout(() => { try { win.webContents.reload(); } catch {} }, 500 * reloads); };
   win.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => { if (isMain && code !== -3) reload(`load failed: ${desc}`); });
   win.webContents.on('render-process-gone', () => reload('renderer gone'));
   win.webContents.on('did-finish-load', () => {
     setTimeout(async () => {
       if (win.isDestroyed()) return;
       try { if (!(await win.webContents.executeJavaScript("document.querySelectorAll('#chat > *, .msg').length > 0"))) reload('UI did not start'); } catch (e) { reload('check failed'); }
-    }, 2500);
+    }, 4000);
   });
+  // If the page has not even finished loading after 8 s (slow disk/antivirus right after login or an install), try again.
+  setTimeout(() => { if (!win.isDestroyed() && win.webContents.isLoading()) reload('load took too long'); }, 8000);
+  win.webContents.on('unresponsive', () => reload('page unresponsive'));
+  win.webContents.on('did-finish-load', () => logger.log('window', 'page loaded'));
   let shown = false;
   const reveal = () => { if (shown) return; shown = true; if (!startHidden) win.show(); };
   win.once('ready-to-show', reveal);
@@ -178,6 +182,12 @@ app.whenReady().then(() => {
   // First launch of the installed app: turn on "Start with Windows" once (can be switched off in Settings).
   if (!cfg.get().shellDefaultApplied) cfg.set({ allowShell: true, shellDefaultApplied: true });
   if (app.isPackaged && !cfg.get().startupInitialised) cfg.set({ startWithWindows: true, startupInitialised: true });
+  // A new app.asar can leave the browser engine's cached compiled scripts / GPU data from the old one, which can show a blank window on the first start. Clear them once whenever the version changes.
+  try {
+    const fs = require('fs'), vf = path.join(app.getPath('userData'), 'last-version.txt'), cur = app.getVersion() + '|' + (fs.statSync(path.join(__dirname, '..', '..', 'package.json')).mtimeMs | 0);
+    let prev = ''; try { prev = fs.readFileSync(vf, 'utf8'); } catch {}
+    if (prev !== cur) { session.defaultSession.clearCodeCaches({}).catch(() => {}); session.defaultSession.clearCache().catch(() => {}); fs.writeFileSync(vf, cur); logger.log('window', 'app files changed: cleared cached scripts'); }
+  } catch (e) { logger.log('window', 'cache reset skipped: ' + e.message); }
   wireIpc();
   // The wake listener opens the microphone once, when it starts. After sleep, a screen lock or a device change it can be left listening to nothing, so start it again.
   for (const ev of ['resume', 'unlock-screen']) powerMonitor.on(ev, () => setTimeout(() => { try { wakeLocal.restart(); } catch {} }, 3000));

@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.9.0]
+
+### Fixed
+- Blank window / wake word not working on the first start after an update: cached scripts from the previous version are now cleared once whenever the app files change; a page that is slow to load (or hangs) is reloaded automatically; the window retries reading its settings at startup so the wake listener always starts; every load and reload is written to the log.
+
 ## [3.8.0]
 
 (Version numbering now follows the app.asar release counter.)

@@ -408,7 +408,10 @@ $('s-clear-mem').onclick = async () => { cfg = await J.clearMemory(); fillSettin
 
 // ---------------- boot ----------------
 (async () => {
-  cfg = await J.getConfig(); applyTheme(cfg.settings);
+  // At boot the main process can still be busy: retry a few times so the window fills in and the wake listener always starts.
+  for (let i = 0; !cfg && i < 6; i++) { try { cfg = await J.getConfig(); } catch { await new Promise(r => setTimeout(r, 700 * (i + 1))); } }
+  if (!cfg) { addMsg('assistant', 'Vision could not read its settings. Please restart it.'); return; }
+  applyTheme(cfg.settings);
   if (!cfg.hasKey) { addMsg('assistant', 'Good to meet you. I need a Gemini API key to get started.'); openSettings(true); }
   else addMsg('assistant', 'Standing by. Say “Hey Vision”, tap the mic, or press Ctrl+Alt+Space, then just tell me what to do.');
   syncWake();
