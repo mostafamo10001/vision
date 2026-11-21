@@ -8,8 +8,9 @@
 </head>
 <body>
 <div id="app">
+  <div class="bgfx" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><div class="grid"></div></div>
   <header class="titlebar">
-    <div class="brand" title="Made by Mostafa Mamdouh"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.6" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M7.1 7.6h3.2L12 12.2l1.7-4.6h3.2L12 16.8z" fill="#fff"/></svg>VISION<span class="dot" id="dot"></span></div>
+    <div class="brand" title="Made by Mostafa Mamdouh"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.6" fill="none" stroke-width="1.5"/><path d="M7.1 7.6h3.2L12 12.2l1.7-4.6h3.2L12 16.8z"/></svg>VISION<span class="dot" id="dot"></span></div>
     <div class="status" id="status">Standing by</div>
     <div class="winbtns">
       <button id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
@@ -85,8 +86,10 @@
 
       <h3>Appearance</h3>
       <label class="field"><span>Colour theme</span>
-        <select id="s-themePreset"><option value="vision">Vision (indigo and gold)</option><option value="ocean">Ocean (blue and amber)</option><option value="emerald">Emerald (green and yellow)</option><option value="crimson">Crimson (red and amber)</option><option value="mono">Mono (silver and white)</option><option value="custom">Custom</option></select></label>
-      <div class="row colors"><label>Main<input type="color" id="s-themeAccent"></label><label>Highlight<input type="color" id="s-themeGold"></label><label>Listening<input type="color" id="s-themeListen"></label></div>
+        <select id="s-themePreset"><option value="vision">Vision (J.A.R.V.I.S. blue)</option><option value="aurora">Aurora (violet and teal)</option><option value="plasma">Plasma (white-blue and warm light)</option><option value="ocean">Ocean (blue and amber)</option><option value="emerald">Emerald (green and yellow)</option><option value="crimson">Crimson (red and amber)</option><option value="mono">Mono (silver and white)</option><option value="daylight">Daylight (light mode)</option><option value="custom">Custom</option></select></label>
+      <div class="row colors"><label>Background<input type="color" id="s-themeBg"></label><label>Main<input type="color" id="s-themeAccent"></label><label>Highlight<input type="color" id="s-themeGold"></label><label>Listening<input type="color" id="s-themeListen"></label></div>
+      <small style="color:var(--faint);font-size:11px">Pick a Background and a Main colour. Main re-tunes Highlight and Listening so they always sit well together, and you can still change those two afterwards. Text adjusts automatically, so light backgrounds work too.</small>
+      <label class="check"><input type="checkbox" id="s-orbWhileTalking"><span>Show the floating orb while I talk <small>(when Vision's window is hidden, a small orb appears at the bottom of the screen and follows your voice)</small></span></label>
 
       <h3>Window</h3>
       <label class="check"><input type="checkbox" id="s-alwaysOnTop"><span>Keep Vision on top</span></label>

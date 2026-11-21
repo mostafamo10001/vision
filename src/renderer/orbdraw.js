@@ -1,70 +1,86 @@
 // The Vision orb, drawn on a 2D canvas. Used by both the main window and the floating overlay so they always match.
 // o = { rgb: [r,g,b], lvl: 0..1 audio level, mode: 'idle'|'armed'|'listening'|'speaking'|'thinking'|'acting'|'connecting'|'error', R?, cx?, cy? }
+// v5 "J.A.R.V.I.S. HUD": concentric instrument rings in one glowing colour, like the interface from the Iron Man / Avengers films.
+//   centre: a bright reactor core.  Then, going outward: a fine ring with sweeping arcs, a thick segmented ring,
+//   a ring of voice bars that spike when someone speaks, a ring of dots, long counter-rotating arcs, and a radar-style tick ring.
+// Calm: everything turns slowly. Talking: the voice ring moves and the core swells. Working: the rings spin up and the segments chase each other.
 const TAU = Math.PI * 2;
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 const mix = (c, k) => c.map(v => v + (255 - v) * k);
 
 export function drawOrb(g, W, H, t, o) {
   const rgb = o.rgb, lvl = o.lvl || 0, mode = o.mode || 'idle';
-  const cx = o.cx ?? W / 2, cy = o.cy ?? H / 2, R = o.R ?? Math.min(46, H * 0.22);
+  const cx = o.cx ?? W / 2, cy = o.cy ?? H / 2, R = o.R ?? Math.min(50, H * 0.22);
   const busy = mode === 'acting' || mode === 'thinking' || mode === 'connecting', live = mode === 'listening' || mode === 'speaking';
-  const spin = busy ? 2.6 : 1;
-  g.save(); g.lineCap = 'round';
+  const calm = !live && !busy;
+  const c = rgb, hi = mix(rgb, 0.55), speed = busy ? 3.4 : 1; // working = everything spins faster
+  const turn = ms => (t / ms) * TAU * speed;
 
-  // soft halo
-  const halo = g.createRadialGradient(cx, cy, R * 0.5, cx, cy, R * 3.1);
-  halo.addColorStop(0, rgba(rgb, 0.24 + lvl * 0.22)); halo.addColorStop(0.5, rgba(rgb, 0.07 + lvl * 0.07)); halo.addColorStop(1, rgba(rgb, 0));
-  g.fillStyle = halo; g.beginPath(); g.arc(cx, cy, R * 3.1, 0, TAU); g.fill();
+  g.save(); g.lineCap = 'butt'; g.lineJoin = 'round';
+  const arc = (r, a0, a1, w, col, al, glow) => { g.beginPath(); g.arc(cx, cy, r, a0, a1); g.strokeStyle = rgba(col, al); g.lineWidth = w; g.shadowColor = rgba(col, 0.9); g.shadowBlur = glow || 0; g.stroke(); g.shadowBlur = 0; };
+  const dot = (x, y, r, col, al) => { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fillStyle = rgba(col, al); g.fill(); };
 
-  // outer tick ring (slow drift)
-  const rot = t / 9000 * spin;
-  for (let i = 0; i < 90; i++) {
-    const a = rot + i * TAU / 90, major = i % 10 === 0, r1 = R * 2.12, r2 = r1 - R * (major ? 0.16 : 0.07);
-    g.beginPath(); g.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); g.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
-    g.strokeStyle = rgba(rgb, major ? 0.5 : 0.2); g.lineWidth = major ? 1.6 : 1; g.stroke();
+  // soft glow behind everything
+  const halo = g.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 2.3);
+  halo.addColorStop(0, rgba(c, 0.20 + lvl * 0.22)); halo.addColorStop(0.55, rgba(c, 0.05 + lvl * 0.06)); halo.addColorStop(1, rgba(c, 0));
+  g.fillStyle = halo; g.beginPath(); g.arc(cx, cy, R * 2.3, 0, TAU); g.fill();
+  g.globalCompositeOperation = 'lighter';
+
+  // 1. reactor core: a bright disc inside a thin ring
+  const cr = R * (0.34 + lvl * 0.1 + (busy ? 0.03 * Math.sin(t / 200) : 0.015 * Math.sin(t / 900)));
+  const core = g.createRadialGradient(cx, cy, 0, cx, cy, cr);
+  core.addColorStop(0, 'rgba(255,255,255,0.95)'); core.addColorStop(0.45, rgba(hi, 0.85)); core.addColorStop(1, rgba(c, 0.25));
+  g.shadowColor = rgba(c, 1); g.shadowBlur = R * (0.45 + lvl * 0.7);
+  g.fillStyle = core; g.beginPath(); g.arc(cx, cy, cr, 0, TAU); g.fill(); g.shadowBlur = 0;
+  arc(cr * 1.28, 0, TAU, 1.2, hi, 0.75);
+
+  // 2. fine ring with three short bright arcs sweeping the other way
+  const r2 = R * 0.66;
+  arc(r2, 0, TAU, 1, c, 0.35);
+  for (let i = 0; i < 3; i++) { const a = -turn(5200) + i * TAU / 3; arc(r2, a, a + 0.55, 2.2, hi, 0.95, 6); }
+
+  // 3. thick segmented ring (when working the segments light up one after another)
+  const r3 = R * 0.9, segs = 6, gap = 0.16, base = turn(16000);
+  for (let i = 0; i < segs; i++) {
+    const a0 = base + i * TAU / segs + gap / 2, a1 = base + (i + 1) * TAU / segs - gap / 2;
+    const chase = busy ? 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t / 170 - i * 1.1)) : (i % 2 ? 0.5 : 0.78) + lvl * 0.2;
+    arc(r3, a0, a1, R * 0.12, c, Math.min(1, chase), 5);
+  }
+  arc(r3 - R * 0.1, 0, TAU, 1, c, 0.22);
+
+  // 4. voice ring: fine bars that stand up with the voice (a quiet ring of dashes when nobody is talking)
+  const r4 = R * 1.08, bars = 80, spec = live ? 0.12 + lvl * 1.1 : busy ? 0.10 + 0.07 * Math.sin(t / 240) : 0.02;
+  g.lineWidth = Math.max(1.2, R * 0.032);
+  for (let i = 0; i < bars; i++) {
+    const a = i * TAU / bars;
+    const n = 0.5 + 0.5 * (Math.sin(i * 0.9 + t / 190) * 0.5 + Math.sin(i * 2.1 - t / 310) * 0.3 + Math.sin(i * 3.7 + t / 130) * 0.2);
+    const len = R * (0.035 + 0.3 * spec * n);
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * r4, cy + Math.sin(a) * r4); g.lineTo(cx + Math.cos(a) * (r4 + len), cy + Math.sin(a) * (r4 + len));
+    g.strokeStyle = rgba(mix(c, 0.2 * n), (calm ? 0.35 : 0.3 + 0.6 * n)); g.stroke();
   }
 
-  // spectrum ring: reacts to the voice (yours while listening, Vision's while speaking)
-  const N = 72, rb = R * 1.58;
-  for (let i = 0; i < N; i++) {
-    const a = -Math.PI / 2 + i * TAU / N;
-    const n = 0.5 + 0.5 * Math.sin(t / 170 + i * 1.9) * Math.sin(t / 310 + i * 0.7);
-    const amp = live ? lvl * (0.25 + 0.75 * n) : busy ? 0.1 + 0.12 * n : 0.04 + 0.03 * n;
-    const len = R * 0.07 + R * 0.62 * amp;
-    g.beginPath(); g.moveTo(cx + Math.cos(a) * rb, cy + Math.sin(a) * rb); g.lineTo(cx + Math.cos(a) * (rb + len), cy + Math.sin(a) * (rb + len));
-    g.strokeStyle = rgba(rgb, 0.3 + 0.65 * Math.min(1, amp * 1.4)); g.lineWidth = Math.max(1.3, R * 0.05); g.stroke();
+  // 5. ring of dots, slowly turning
+  const r5 = R * 1.42, rot5 = turn(24000);
+  arc(r5, 0, TAU, 1, c, 0.22);
+  for (let i = 0; i < 12; i++) { const a = rot5 + i * TAU / 12; dot(cx + Math.cos(a) * r5, cy + Math.sin(a) * r5, i % 3 === 0 ? 2.1 : 1.3, hi, i % 3 === 0 ? 0.95 : 0.55); }
+
+  // 6. long arcs turning against each other, each ending in a bead
+  const r6 = R * 1.6, rot6 = -turn(19000);
+  for (const [off, span, w] of [[0, 1.25, 0.06], [2.3, 0.7, 0.05], [4.1, 0.42, 0.04]]) {
+    const a0 = rot6 + off, a1 = a0 + span;
+    arc(r6, a0, a1, R * w, c, 0.9, 7);
+    dot(cx + Math.cos(a1) * r6, cy + Math.sin(a1) * r6, Math.max(1.5, R * 0.035), hi, 1);
   }
 
-  // two segmented rings turning in opposite directions
-  const arcs = (r, count, span, ang, w, alpha) => { for (let i = 0; i < count; i++) { const s = ang + i * TAU / count; g.beginPath(); g.arc(cx, cy, r, s, s + span); g.strokeStyle = rgba(rgb, alpha); g.lineWidth = w; g.stroke(); } };
-  arcs(R * 1.30, 3, 1.35, t / 2600 * spin, Math.max(2, R * 0.075), 0.85);
-  arcs(R * 1.16, 2, 0.9, -t / 1900 * spin + 1, Math.max(1.2, R * 0.04), 0.55);
-  g.beginPath(); g.arc(cx, cy, R * 1.04, 0, TAU); g.strokeStyle = rgba(rgb, 0.22); g.lineWidth = 1; g.stroke();
-
-  // when working or thinking: bright orbiting dots
-  if (busy) {
-    for (let k = 0; k < 3; k++) {
-      const a = t / (900 + k * 330) * (k % 2 ? -1 : 1) + k * 2.1, r = R * (1.9 - k * 0.12);
-      g.beginPath(); g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, Math.max(1.8, R * 0.06), 0, TAU);
-      g.fillStyle = rgba(mix(rgb, 0.6), 0.95); g.shadowColor = rgba(rgb, 1); g.shadowBlur = 10; g.fill(); g.shadowBlur = 0;
-    }
+  // 7. outermost tick ring, with a radar sweep of light going round it
+  const r7 = R * 1.8, ticks = 90, sweep = turn(busy ? 2200 : 7000);
+  for (let i = 0; i < ticks; i++) {
+    const a = i * TAU / ticks, major = i % 5 === 0;
+    let d = ((sweep - a) % TAU + TAU) % TAU; const near = Math.max(0, 1 - d / 1.1); // brightest just behind the sweep
+    const len = R * (major ? 0.075 : 0.04);
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * r7, cy + Math.sin(a) * r7); g.lineTo(cx + Math.cos(a) * (r7 + len), cy + Math.sin(a) * (r7 + len));
+    g.strokeStyle = rgba(near > 0.05 ? mix(c, 0.5 * near) : c, (major ? 0.38 : 0.18) + near * 0.7); g.lineWidth = major ? 1.4 : 1; g.stroke();
   }
-
-  // glowing core sphere
-  const cr = R * (0.8 + lvl * 0.2);
-  const core = g.createRadialGradient(cx, cy - cr * 0.3, cr * 0.1, cx, cy, cr);
-  core.addColorStop(0, rgba(mix(rgb, 0.85), 1)); core.addColorStop(0.45, rgba(rgb, 0.95)); core.addColorStop(1, rgba(rgb, 0.18));
-  g.shadowColor = rgba(rgb, 1); g.shadowBlur = R * (0.7 + lvl * 0.9);
-  g.beginPath(); g.arc(cx, cy, cr, 0, TAU); g.fillStyle = core; g.fill(); g.shadowBlur = 0;
-
-  // the gem from the Vision logo, at the heart of the orb
-  const s = R * (0.34 + lvl * 0.07);
-  const P = [[-0.5, -0.78], [0.5, -0.78], [0.92, -0.22], [0.58, 0.62], [0, 1.0], [-0.58, 0.62], [-0.92, -0.22]].map(([x, y]) => [cx + x * s, cy + y * s - s * 0.06]);
-  const gem = g.createLinearGradient(cx - s, cy - s, cx + s, cy + s);
-  gem.addColorStop(0, 'rgba(255,255,255,0.98)'); gem.addColorStop(1, rgba(mix(rgb, 0.55), 0.95));
-  g.beginPath(); P.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fillStyle = gem; g.fill();
-  g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = Math.max(1, R * 0.03); g.stroke();
-  g.beginPath(); g.moveTo(P[0][0] + s * 0.3, P[0][1]); g.lineTo(cx, cy + s * 0.05); g.lineTo(P[1][0] - s * 0.3, P[1][1]); g.moveTo(cx, cy + s * 0.05); g.lineTo(P[4][0], P[4][1]);
-  g.strokeStyle = rgba(rgb, 0.5); g.lineWidth = Math.max(1, R * 0.025); g.stroke();
+  g.globalCompositeOperation = 'source-over';
   g.restore();
 }

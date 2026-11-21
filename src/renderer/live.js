@@ -64,7 +64,7 @@ export class LiveClient {
     this.o = opts; this.cb = cb || {};
     this.ws = null; this.handle = null; this.closing = false; this.reconnecting = false;
     this.model = null; this.variant = null; this.lean = false;
-    this.player = null; this.mic = null; this.micLevel = 0; this.pendingTools = 0; this.cancelers = new Set(); this.stoppedAt = 0;
+    this.player = null; this.mic = null; this.micLevel = 0; this.lastVoiceAt = 0; this.pendingTools = 0; this.cancelers = new Set(); this.stoppedAt = 0;
   }
   get connected() { return !!this.ws && this.ws.readyState === WebSocket.OPEN; }
   get speaking() { return !!this.player?.playing; }
@@ -142,9 +142,11 @@ export class LiveClient {
     // Silence gate: only upload audio while someone is talking (plus a short lead-in, and a tail as long as the silence-wait
     // setting so Gemini can still tell that the turn is over). Quiet rooms upload almost nothing; a noisy room just keeps the gate open.
     const hang = Math.ceil(((this.o.silenceMs || 2500) + 800) / 40), PRE = 15; // 40 ms chunks
-    const ring = []; let nf = 0.01, run = 0, open = false, quiet = 0, lastSent = Date.now();
+    const ring = []; let vrun = 0, nf = 0.01, run = 0, open = false, quiet = 0, lastSent = Date.now();
     const gate = (pcm, rms) => {
       const voiced = rms > Math.max(nf * 2.2, 0.006);
+      vrun = voiced ? vrun + 1 : 0; // a cough or a click is not speech: it takes about a tenth of a second of sound
+      if (vrun >= 3 && !this.player?.playing) this.lastVoiceAt = Date.now(); // for the orb: you are talking right now
       if (!open) {
         nf = Math.min(0.03, nf * 0.97 + rms * 0.03);
         ring.push(pcm); if (ring.length > PRE) ring.shift();

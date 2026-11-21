@@ -1,12 +1,12 @@
 'use strict';
-// A small glowing orb that fades in over everything while Vision is speaking or thinking and Vision' own window isn't on screen.
+// A small glowing orb that fades in over everything while you are talking, or Vision is speaking or thinking, and Vision' own window isn't on screen.
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
 const cfg = require('./config');
 const runtime = require('./runtime');
 
-const SIZE = 200, HOLD_MS = 700;
-let w = null, shown = false, hideTimer = null, killTimer = null;
+const SIZE = 200, HOLD_MS = 700, HOLD_TALK_MS = 1100; // you pause between words, so the orb stays a little longer while you talk
+let w = null, shown = false, hideTimer = null, killTimer = null, lastMode = null;
 
 function create() {
   if (w && !w.isDestroyed()) return w;
@@ -63,14 +63,14 @@ function hide() {
   killTimer = setTimeout(() => { if (w && !w.isDestroyed() && !shown) w.hide(); }, 450);
 }
 
-// Called ~25x/second by the voice window: mode is "speaking", "thinking" or null (idle).
+// Called ~25x/second by the voice window: mode is "listening" (you are talking), "speaking", "thinking" or null (idle).
 function update(mode, level) {
   if (mode && !userSeesVision()) {
-    clearTimeout(hideTimer); hideTimer = null;
+    clearTimeout(hideTimer); hideTimer = null; lastMode = mode;
     show();
     if (w && !w.isDestroyed()) { w.webContents.send('orb:mode', mode); w.webContents.send('orb:level', level); }
   } else if (shown && !hideTimer) {
-    hideTimer = setTimeout(hide, HOLD_MS); // short hold so gaps between spoken chunks don't flicker
+    hideTimer = setTimeout(hide, lastMode === 'listening' ? HOLD_TALK_MS : HOLD_MS); // short hold so gaps between spoken chunks don't flicker
   }
 }
 function applySettings() { if (w && !w.isDestroyed()) w.setContentProtection(!!cfg.get().hideFromCapture); }

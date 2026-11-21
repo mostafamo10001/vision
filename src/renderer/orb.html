@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'">
 <style>
   html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
-  body{opacity:0;transition:opacity .35s ease}
+  body{opacity:0;transition:opacity .15s ease}
   body.on{opacity:1}
   canvas{width:100%;height:100%;display:block}
 </style></head>
@@ -13,11 +13,11 @@ import { drawOrb } from './orbdraw.js';
 const c = document.getElementById('c'), g = c.getContext('2d');
 const D = window.devicePixelRatio || 1, S = 200;
 c.width = S * D; c.height = S * D; g.scale(D, D);
-const COL = { speaking: [246, 194, 82], thinking: [167, 139, 250] };
+const COL = { speaking: [246, 194, 82], thinking: [167, 139, 250], listening: [94, 234, 212] };
 let lvl = 0, target = 0, mode = 'speaking', rgb = COL.speaking.slice();
 orb.on('level', v => { target = Math.max(0, Math.min(1, Number(v) || 0)); });
 orb.on('mode', m => { if (COL[m]) mode = m; });
-orb.on('theme', t => { if (t && t.speaking) COL.speaking = t.speaking; if (t && t.thinking) COL.thinking = t.thinking; });
+orb.on('theme', t => { if (t && t.speaking) COL.speaking = t.speaking; if (t && t.thinking) COL.thinking = t.thinking; if (t && t.listening) COL.listening = t.listening; });
 // The animation loop only exists while the orb is on screen; when it is hidden nothing is drawn at all.
 let running = false, stopTimer = 0;
 function startLoop() { clearTimeout(stopTimer); if (!running) { running = true; requestAnimationFrame(frame); } }
@@ -28,7 +28,7 @@ function frame(t) {
   lvl += (target - lvl) * 0.25;
   const goal = COL[mode]; rgb = rgb.map((v, i) => v + (goal[i] - v) * 0.12);
   g.clearRect(0, 0, S, S);
-  drawOrb(g, S, S, t, { rgb, lvl, mode, cx: S / 2, cy: S / 2, R: 34 });
+  drawOrb(g, S, S, t, { rgb, lvl, mode, cx: S / 2, cy: S / 2, R: 42 });
   if (running) requestAnimationFrame(frame);
 }
 </script></body></html>

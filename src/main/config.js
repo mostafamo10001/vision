@@ -22,7 +22,8 @@ const DEFAULTS = {
   hideFromCapture: true,      // keep Vision out of its own screenshots
   startWithWindows: false,   // the installed .exe switches this on at first launch
   startupInitialised: false, // internal: first-run flag
-  themePreset: 'vision', themeAccent: '#7c8cff', themeGold: '#f6c252', themeListen: '#3de0d0',
+  themePreset: 'vision', themeAccent: '#7c8cff', themeGold: '#f6c252', themeListen: '#3de0d0', themeBg: '#06080e',
+  orbWhileTalking: true,      // show the small floating orb at the bottom of the screen while you talk and Vision' window is hidden
   excludeModels: 'gemini-3.8-flash', // comma-separated models Vision must never call (short quota)
   wakeEngine: 'local',               // 'local' = Windows speech recognition (offline, no quota) | 'cloud' = Gemini
   wakePhrases: 'hey vision, okay vision, hey jarvis, okay jarvis',

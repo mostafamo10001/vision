@@ -75,15 +75,19 @@ function showError(e) { errorUntil = Date.now() + 4000; addStep('err', typeof e 
 const COLORS = { armed: '#6f82e8', idle: '#7c8cff', connecting: '#8b9aab', listening: '#3de0d0', speaking: '#f6c252', acting: '#8c9eff', error: '#ff6b6b', thinking: '#a78bfa' };
 const LABELS = { armed: 'Say “Hey Vision”', idle: 'Standing by', connecting: 'Connecting…', listening: 'Listening', speaking: 'Speaking', acting: 'Working…', error: 'Something went wrong', thinking: 'Thinking…' };
 
-let awaiting = 0, lastUserTextAt = 0, turnDoneAt = 0;
+let awaiting = 0, lastUserTextAt = 0, turnDoneAt = 0, lastAudioAt = 0;
 let reqBuf = '', turnToolCount = 0, usedMulti = false, lastToolAt = 0, continued = false; // what the user asked, and how much of it has been acted on // awaiting = when we started waiting for Vision to answer
+const turnEndMs = () => ((live && live.o && live.o.silenceMs) || 2500) + 150; // how long you must be quiet before Vision counts your turn as finished
 function uiState() {
   if (Date.now() < errorUntil) return 'error';
   if (connecting || reconnecting) return 'connecting';
   if (activity.state === 'acting' || live?.busy) return 'acting';
   if (live?.speaking) return 'speaking';
   // between you finishing a sentence (or a tool finishing) and Vision' first spoken word
-  if (live && awaiting && Date.now() - awaiting < 20000 && Date.now() - lastUserTextAt > 900 && live.micLevel < 0.05) return 'thinking';
+  // Vision is 'thinking' from the moment your voice goes quiet (heard locally, no waiting for the transcript) until its first sound
+  // The working orb starts only when Vision is really answering: once you have been quiet for the whole 'wait for silence' time (the moment the server takes your turn), never during a short pause
+  if (live && live.lastVoiceAt > lastAudioAt && live.lastVoiceAt > turnDoneAt && Date.now() - live.lastVoiceAt > turnEndMs() && Date.now() - live.lastVoiceAt < turnEndMs() + 15000) return 'thinking';
+  if (live && awaiting && Date.now() - awaiting < 20000 && Date.now() - lastUserTextAt > Math.max(900, turnEndMs()) && live.micLevel < 0.05) return 'thinking';
   if (live) return 'listening';
   if (wake.running) return 'armed';
   return 'idle';
@@ -103,7 +107,7 @@ function frame(t) {
   lvl += (target - lvl) * 0.2;
   const goal = hex(COLORS[st]); rgb = rgb.map((v, i) => v + (goal[i] - v) * 0.12);
   g.clearRect(0, 0, W, H);
-  drawOrb(g, W, H, t, { rgb, lvl, mode: st, cx: W / 2, cy: H / 2 - 4, R: Math.min(46, H * 0.21) });
+  drawOrb(g, W, H, t, { rgb, lvl, mode: st, cx: W / 2, cy: H / 2 - 4, R: Math.min(52, H * 0.235) });
 
   if (st !== shown) {
     shown = st;
@@ -204,7 +208,7 @@ async function startListening(pendingText, opts = {}) {
         }
       },
       onInterrupted: () => { curAsst = null; awaiting = 0; },
-      onAudio: () => { lastActivity = Date.now(); awaiting = 0; },
+      onAudio: () => { lastActivity = Date.now(); awaiting = 0; lastAudioAt = Date.now(); try { J.orb('speaking', live ? live.outLevel() : 0); orbWasOn = true; } catch {} /* the orb appears with the first sound, not on the next poll */ },
       onTool: calls => { lastActivity = Date.now(); curUser = null; awaiting = Date.now(); turnToolCount += (calls || []).length; if ((calls || []).some(isMultiStepCall)) usedMulti = true; lastToolAt = Date.now(); },
       lastRequest: () => reqBuf,
       // start_transcription only runs if the user's own words contain "transcribe" / "start transcribing" (the spoken text can arrive a moment after the tool call, so wait briefly)
@@ -315,20 +319,38 @@ function fillSelect(sel, current, list, autoLabel) {
   sel.value = current;
 }
 // ---- colour themes ----
-const PRESETS = { vision: ['#7c8cff', '#f6c252', '#3de0d0'], ocean: ['#38bdf8', '#fbbf24', '#34d399'], emerald: ['#34d399', '#fde047', '#22d3ee'], crimson: ['#f43f5e', '#fbbf24', '#fb923c'], mono: ['#cbd5e1', '#ffffff', '#94a3b8'] };
+const PRESETS = { vision: ['#3fc8ff', '#9be8ff', '#4de8d0', '#030a14'], aurora: ['#a78bfa', '#f0abfc', '#2dd4bf', '#0a0714'], plasma: ['#9fb4ff', '#ffd9a8', '#7ee8ff', '#05070d'], ocean: ['#38bdf8', '#a5b4fc', '#34d399', '#050b14'], emerald: ['#34d399', '#bef264', '#22d3ee', '#04100c'], crimson: ['#f43f5e', '#fb923c', '#f472b6', '#0f0609'], mono: ['#cbd5e1', '#ffffff', '#94a3b8', '#08090b'], daylight: ['#4f6bff', '#8b5cf6', '#0d9488', '#f3f5fa'] };
+// pick one Main colour and the Highlight and Listening colours are tuned to sit beside it on the colour wheel
+const hslOf = ([r, g, b]) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; let h = 0, s = 0; if (d) { s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = (mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60; } return [h, s, l]; };
+const fromHsl = (h, s, l) => { h = ((h % 360) + 360) % 360; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); return [f(0) * 255, f(8) * 255, f(4) * 255]; };
+function harmonise(mainHex) {
+  const m = hexRgb(mainHex) || hexRgb(PRESETS.vision[0]), [h, s, l] = hslOf(m), sat = Math.max(0.45, s), lit = Math.min(0.78, Math.max(0.6, l));
+  return [rgbHex(fromHsl(h + 38, sat, Math.min(0.84, lit + 0.08))), rgbHex(fromHsl(h - 52, sat, lit))];
+}
 const hexRgb = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); if (!m) return null; const n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const rgbHex = c => '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-const themeColors = s => PRESETS[s.themePreset] || [s.themeAccent || PRESETS.vision[0], s.themeGold || PRESETS.vision[1], s.themeListen || PRESETS.vision[2]];
+const themeColors = s => PRESETS[s.themePreset] || [s.themeAccent || PRESETS.vision[0], s.themeGold || PRESETS.vision[1], s.themeListen || PRESETS.vision[2], s.themeBg || PRESETS.vision[3]];
+const lum = c => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; // rough brightness 0..1, used to pick readable text colours
 function applyTheme(s) {
-  const [a, g, l] = themeColors(s).map((h, i) => hexRgb(h) || hexRgb(PRESETS.vision[i]));
+  const [a, g, l, bg] = themeColors(s).map((h, i) => hexRgb(h) || hexRgb(PRESETS.vision[i]));
   const root = document.documentElement.style, lighten = (c, k) => c.map(v => v + (255 - v) * k);
-  root.setProperty('--accent-rgb', a.join(',')); root.setProperty('--gold-rgb', g.join(','));
+  const light = lum(bg) > 0.55; // light background: dark text, dark background: light text
+  // the backdrop is built only from the background colour: a lifted centre and a deepened edge of the same hue
+  const lift = light ? lighten(bg, 0.6) : lighten(bg, 0.07), deep = light ? bg.map(v => v * 0.9) : bg.map(v => v * 0.5);
+  root.setProperty('--accent-rgb', a.join(',')); root.setProperty('--gold-rgb', g.join(',')); root.setProperty('--listen-rgb', l.join(','));
+  root.setProperty('--bg-rgb', bg.map(Math.round).join(',')); root.setProperty('--bg-lift-rgb', lift.map(Math.round).join(',')); root.setProperty('--bg-deep-rgb', deep.map(Math.round).join(','));
+  root.setProperty('--fg-rgb', light ? '18,22,34' : '232,236,247');
+  root.setProperty('--on-accent', lum(a) > 0.6 ? '#05070c' : '#ffffff');
   Object.assign(COLORS, { idle: rgbHex(a), armed: rgbHex(a.map(v => v * 0.85)), acting: rgbHex(lighten(a, 0.2)), thinking: rgbHex(lighten(a, 0.4)), speaking: rgbHex(g), listening: rgbHex(l) });
-  J.setTheme({ speaking: g, thinking: lighten(a, 0.4) });
+  J.setTheme({ speaking: g, thinking: lighten(a, 0.4), listening: l });
   shown = ''; // makes the next frame repaint the status dot and label in the new colours
 }
-$('s-themePreset').addEventListener('change', async e => { const p = e.target.value, c = PRESETS[p]; await patch(c ? { themePreset: p, themeAccent: c[0], themeGold: c[1], themeListen: c[2] } : { themePreset: 'custom' }); fillSettings(); });
-for (const k of ['themeAccent', 'themeGold', 'themeListen']) $('s-' + k).addEventListener('input', async e => { await patch({ themePreset: 'custom', [k]: e.target.value }); $('s-themePreset').value = 'custom'; });
+$('s-themePreset').addEventListener('change', async e => { const p = e.target.value, c = PRESETS[p]; await patch(c ? { themePreset: p, themeAccent: c[0], themeGold: c[1], themeListen: c[2], themeBg: c[3] } : { themePreset: 'custom' }); fillSettings(); });
+for (const k of ['themeBg', 'themeAccent', 'themeGold', 'themeListen']) $('s-' + k).addEventListener('input', async e => {
+  const cur = themeColors(cfg.settings), next = { themePreset: 'custom', themeAccent: cur[0], themeGold: cur[1], themeListen: cur[2], themeBg: cur[3], [k]: e.target.value };
+  if (k === 'themeAccent') { const [h2, l2] = harmonise(e.target.value); next.themeGold = h2; next.themeListen = l2; $('s-themeGold').value = h2; $('s-themeListen').value = l2; } // Main drives the matching colours
+  await patch(next); $('s-themePreset').value = 'custom';
+});
 // ---- local wake word ----
 J.on('wake-detected', ({ phrase }) => { if (live || connecting || recorder.active) return; addStep('sys', `Wake word heard: “${phrase}”.`); localWakeOn = false; J.localWake(false); /* free the microphone for the session */ startListening(null, { fromWake: true, local: true }); });
 // Microphone plugged/unplugged or switched, or the network came back: the Windows listener only binds to the microphone when it starts.
@@ -346,8 +368,8 @@ function fillSettings() {
   $('s-excludeModels').value = s.excludeModels || '';
   for (const k of ['wakeEngine', 'wakePhrases', 'wakeSensitivity']) $('s-' + k).value = s[k] || '';
   $('s-shellMaxCommands').value = s.shellMaxCommands ?? 10;
-  $('s-themePreset').value = s.themePreset || 'vision'; for (const k of ['themeAccent', 'themeGold', 'themeListen']) $('s-' + k).value = themeColors(s)[k === 'themeAccent' ? 0 : k === 'themeGold' ? 1 : 2];
-  for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows']) $('s-' + k).checked = !!s[k];
+  $('s-themePreset').value = s.themePreset || 'vision'; ['themeAccent', 'themeGold', 'themeListen', 'themeBg'].forEach((k, i) => { $('s-' + k).value = themeColors(s)[i]; });
+  for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows', 'orbWhileTalking']) $('s-' + k).checked = !!s[k];
   $('s-silenceWaitSec').value = s.silenceWaitSec; $('s-maxSteps').value = s.maxSteps; $('s-idleDisconnectSec').value = s.idleDisconnectSec;
   const v = $('s-voice'); v.innerHTML = ''; VOICES.forEach(n => { const o = document.createElement('option'); o.value = o.textContent = n; v.appendChild(o); }); v.value = VOICES.includes(s.voice) ? s.voice : VOICES[0];
   fillSelect($('s-liveModel'), s.liveModel, m.allLive, `Auto${m.live ? ' (' + m.live + ')' : ''}`);
@@ -369,7 +391,7 @@ function fillSettings() {
 async function patch(p) { cfg = await J.setConfig(p); applyTheme(cfg.settings); syncWake(); }
 const binds = { silenceWaitSec: v => Math.min(6, Math.max(0.3, Number(v) || 2.5)), autonomy: v => v, userName: v => v.trim(), excludeModels: v => v.trim(), wakeEngine: v => v, wakePhrases: v => v.trim(), wakeSensitivity: v => v, maxSteps: Number, shellMaxCommands: v => Math.max(1, Math.min(50, Math.round(Number(v)) || 10)), idleDisconnectSec: Number, voice: v => v, liveModel: v => v, workerModel: v => v, fastModel: v => v };
 for (const [k, fn] of Object.entries(binds)) $('s-' + k).addEventListener('change', e => patch({ [k]: fn(e.target.value) }));
-for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows']) $('s-' + k).addEventListener('change', e => patch({ [k]: e.target.checked }));
+for (const k of ['wakeWord', 'handsFree', 'halfDuplex', 'allowShell', 'shellNoAsk', 'holdOpen', 'alwaysOnTop', 'hideFromCapture', 'startWithWindows', 'orbWhileTalking']) $('s-' + k).addEventListener('change', e => patch({ [k]: e.target.checked }));
 
 $('s-key-save').onclick = async () => {
   const msg = $('s-key-msg'); msg.textContent = 'Checking…';
@@ -398,9 +420,11 @@ let orbWasOn = false;
 function orbTick() {
   if (live && live.micLevel > 0.06) lastActivity = Date.now();
   const st = uiState();
-  const mode = st === 'speaking' ? 'speaking' : (st === 'thinking' || st === 'acting') ? 'thinking' : null;
-  if (mode) { J.orb(mode, mode === 'speaking' && live ? live.outLevel() : 0); orbWasOn = true; }
+  const turnOpen = live && live.lastVoiceAt > lastAudioAt && live.lastVoiceAt > turnDoneAt && Date.now() - live.lastVoiceAt < turnEndMs();
+  const talk = st === 'listening' && live && (turnOpen || live.micLevel > 0.05) && cfg && cfg.settings.orbWhileTalking !== false; // you are speaking and the mic hears it
+  const mode = st === 'speaking' ? 'speaking' : (st === 'thinking' || st === 'acting') ? 'thinking' : talk ? 'listening' : null;
+  if (mode) { J.orb(mode, mode === 'speaking' && live ? live.outLevel() : mode === 'listening' ? Math.min(1, live.micLevel * 7) : 0); orbWasOn = true; }
   else if (orbWasOn) { J.orb(null, 0); orbWasOn = false; }
-  setTimeout(orbTick, mode || orbWasOn ? 40 : live ? 250 : 500); // 25 updates/s only while the orb is needed; idle is a slow heartbeat
+  setTimeout(orbTick, mode || orbWasOn ? 40 : live ? 50 : 500); // 25 updates/s only while the orb is needed; a quick check while the mic is open so it appears the moment you speak
 }
 orbTick();

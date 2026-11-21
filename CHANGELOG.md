@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.0
+**New interface**
+- Redesigned look: a J.A.R.V.I.S.-style HUD with an arc-reactor orb, a lifted-centre backdrop and a cleaner conversation view, approval card and Settings page.
+- **Background colour is now changeable** (Settings → Appearance). Text, lines and surfaces switch automatically between light-on-dark and dark-on-light.
+- New colour themes: Aurora (violet and teal) and Plasma (white-blue and warm light). Choosing a Main colour re-tunes Highlight and Listening so they sit well together.
+- **Floating orb while you talk:** when Vision's window is hidden, a small orb appears at the bottom of the screen and follows your voice (can be switched off in Settings).
+- The "working" orb now starts only when Vision is really answering, not during a short pause in your sentence.
+
 ## 1.9.4
 **Security / platform update**
 - Electron 33 (unsupported since April 2025) -> **Electron 45**, the current supported release, with the latest Chromium and Node.js security fixes. Build tooling updated to electron-builder 26; the CI build uses the current Node.js LTS.
