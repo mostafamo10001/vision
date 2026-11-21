@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.1]
+
+### Fixed
+- Blank main window on the very first start: the window now reloads itself if the page fails to load, the renderer exits, or the UI has not drawn shortly after loading, and it is always shown even if `ready-to-show` is missed.
+
 ## 1.10.0
 **New interface**
 - Redesigned look: a J.A.R.V.I.S.-style HUD with an arc-reactor orb, a lifted-centre backdrop and a cleaner conversation view, approval card and Settings page.

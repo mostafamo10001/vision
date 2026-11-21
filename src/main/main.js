@@ -46,7 +46,22 @@ function createWindow() {
     if (typeof d.level === 'string' ? ['warning', 'error'].includes(d.level) : d.level >= 2) logger.log('window', `${d.message} (${path.basename(String(d.sourceId || ''))}:${d.line || ''})`);
   });
   win.webContents.on('render-process-gone', (_e, details) => logger.log('window-crash', JSON.stringify(details)));
-  win.once('ready-to-show', () => { if (!startHidden) win.show(); });
+  // Blank-window guard: if the page fails to load, the renderer dies, or the UI has not drawn itself shortly after loading
+  // (seen on the very first start after install), reload it instead of leaving an empty window.
+  let reloads = 0;
+  const reload = why => { if (win.isDestroyed() || reloads >= 3) return; reloads++; logger.log('window', `reloading (${why})`); setTimeout(() => { try { win.webContents.reload(); } catch {} }, 500 * reloads); };
+  win.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => { if (isMain && code !== -3) reload(`load failed: ${desc}`); });
+  win.webContents.on('render-process-gone', () => reload('renderer gone'));
+  win.webContents.on('did-finish-load', () => {
+    setTimeout(async () => {
+      if (win.isDestroyed()) return;
+      try { if (!(await win.webContents.executeJavaScript("document.querySelectorAll('#chat > *, .msg').length > 0"))) reload('UI did not start'); } catch (e) { reload('check failed'); }
+    }, 2500);
+  });
+  let shown = false;
+  const reveal = () => { if (shown) return; shown = true; if (!startHidden) win.show(); };
+  win.once('ready-to-show', reveal);
+  setTimeout(reveal, 4000); // never stay hidden if ready-to-show is missed
   win.on('close', e => { if (!quitting) { e.preventDefault(); win.hide(); } });
 }
 

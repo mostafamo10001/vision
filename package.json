@@ -1,7 +1,7 @@
 {
   "name": "jarvis-agent",
   "productName": "Vision",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Voice-controlled Gemini agent that sees and operates your Windows PC",
   "main": "src/main/main.js",
   "author": "Mostafa Mamdouh",
