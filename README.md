@@ -12,7 +12,7 @@ Built on the Google Gemini Live API · Windows 10 / 11 · Made by Mostafa Mamdou
 
 <div align="center">
 
-<img src="docs/screenshots/main-window.png" alt="Vision main window: animated orb, status line, chat and a message box" width="360">
+<img src="docs/screenshots/vision-window.png" alt="Vision main window: animated orb, status line, chat and a message box" width="360">
 
 </div>
 
